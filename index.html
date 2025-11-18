@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GRAPH SOCIAL: FACULTY PROTOCOL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0b10;
+            --panel-bg: rgba(16, 20, 35, 0.9);
+            --neon-primary: #00f3ff; 
+            --neon-secondary: #0aff68;
+            --text-main: #d1d5db;
+            --glass: blur(10px);
+        }
+
+        /* THEMES */
+        body.theme-0 { --bg-color: #0a0b10; --neon-primary: #00f3ff; --neon-secondary: #0aff68; } 
+        body.theme-1 { --bg-color: #1a0505; --neon-primary: #ff6b00; --neon-secondary: #bc13fe; } 
+        body.theme-2 { --bg-color: #0f1a0f; --neon-primary: #ff2a2a; --neon-secondary: #2ecc71; } 
+        body.theme-3 { --bg-color: #1a0a1a; --neon-primary: #ff00cc; --neon-secondary: #f1c40f; } 
+        body.theme-4 { --bg-color: #000000; --neon-primary: #ffd700; --neon-secondary: #ffffff; } 
+        body.theme-5 { --bg-color: #001a1a; --neon-primary: #00ffff; --neon-secondary: #ff69b4; } 
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main);
+            font-family: 'Roboto Mono', monospace; overflow: hidden; height: 100vh;
+            display: grid; grid-template-columns: 250px 1fr 250px; grid-template-rows: 80px 1fr 160px;
+            transition: background-color 1.5s ease;
+        }
+
+        /* HEADER */
+        header {
+            grid-column: 1 / -1; background: linear-gradient(180deg, rgba(0,0,0,0.9), transparent);
+            border-bottom: 1px solid var(--neon-primary); display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; z-index: 20; transition: border-color 1.5s;
+        }
+        h1 { font-family: 'Orbitron'; color: var(--neon-primary); margin: 0; text-shadow: 0 0 10px var(--neon-primary); font-size: 1.2rem; }
+        #turn-indicator {
+            flex-grow: 1; text-align: center; font-family: 'Orbitron'; font-weight: 900;
+            font-size: 2rem; text-transform: uppercase; letter-spacing: 3px; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; transform: scale(1.02); } 100% { opacity: 0.8; } }
+
+        /* PANELS */
+        .panel {
+            background: var(--panel-bg); backdrop-filter: var(--glass); display: flex; flex-direction: column;
+            padding: 10px; overflow-y: auto; border: 0 solid #333; transition: background 1.5s;
+        }
+        #left-panel { grid-row: 2 / 3; border-right-width: 1px; }
+        #right-panel { grid-row: 2 / 3; border-left-width: 1px; }
+        
+        #game-container { grid-row: 2 / 3; grid-column: 2 / 3; position: relative; overflow: hidden; cursor: grab; }
+        #game-container:active { cursor: grabbing; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* CONTROLS & DECK */
+        #cam-controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 5px; z-index: 30; }
+        .cam-btn {
+            background: rgba(0,0,0,0.8); border: 1px solid var(--neon-primary); color: var(--neon-primary);
+            width: 30px; height: 30px; cursor: pointer; display: flex; justify-content: center; align-items: center;
+        }
+        #control-deck {
+            grid-row: 3 / 4; grid-column: 1 / -1; background: #050505; border-top: 2px solid var(--neon-secondary);
+            display: flex; align-items: center; justify-content: center; padding: 10px 40px; z-index: 20;
+        }
+        #calc-container {
+            display: flex; flex-direction: column; font-size: 0.75rem; color: #888; 
+            margin-right: 20px; padding-right: 20px; border-right: 1px solid #333; text-align: right; min-width: 140px;
+        }
+        .calc-row { display: flex; justify-content: space-between; gap: 15px; }
+        .calc-val { font-weight: bold; color: var(--text-main); }
+        .calc-val.pos { color: var(--neon-secondary); }
+        .calc-val.neg { color: #ff0055; }
+
+        /* UI ELEMENTS */
+        .card {
+            background: rgba(255,255,255,0.05); border-left: 3px solid #444; margin-bottom: 8px; padding: 8px; font-size: 0.85rem; transition: 0.3s;
+        }
+        .card.active { border-left-color: var(--neon-primary); background: rgba(255, 255, 255, 0.15); transform: translateX(5px); }
+        .btn {
+            background: transparent; border: 1px solid var(--text-main); color: var(--text-main);
+            padding: 10px 20px; font-family: 'Orbitron'; cursor: pointer; transition: 0.2s;
+        }
+        .btn:hover { background: rgba(255,255,255,0.1); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); pointer-events: none; }
+        .btn-primary { border-color: var(--neon-secondary); color: var(--neon-secondary); box-shadow: 0 0 5px var(--neon-secondary); }
+        .btn-primary:hover { background: var(--neon-secondary); color: #000; }
+        #prob-disp { font-size: 2.5rem; font-weight: bold; color: var(--neon-secondary); margin: 0 20px; width: 120px; text-align: right; }
+
+        /* OVERLAYS */
+        #transition-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 200;
+            display: flex; justify-content: center; align-items: center; pointer-events: none; opacity: 0; transition: opacity 1s;
+        }
+        #trans-text {
+            font-family: 'Orbitron'; font-size: 4rem; color: transparent; -webkit-text-stroke: 2px var(--neon-primary);
+            text-shadow: 0 0 30px var(--neon-primary); text-align: center;
+        }
+        #setup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 300;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        input { background: #222; border: 1px solid #555; color: white; padding: 10px; width: 400px; margin: 10px; font-family: 'Roboto Mono'; }
+
+        /* DRAMA OVERLAY (ANIMATION) */
+        #drama-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.98); z-index: 250;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+        #drama-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        #drama-flavor { font-family: 'Orbitron'; font-size: 1.5rem; color: #aaa; margin-bottom: 20px; font-style: italic; text-transform: uppercase; }
+        #drama-versus { font-family: 'Orbitron'; font-size: 2rem; color: var(--neon-primary); margin-bottom: 30px; text-shadow: 0 0 10px var(--neon-primary); }
+        
+        /* LOADING BAR */
+        #drama-loader-container {
+            width: 60%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; margin-top: 20px; box-shadow: 0 0 10px #222;
+        }
+        #drama-loader-bar {
+            height: 100%; width: 0%; background: var(--neon-secondary); box-shadow: 0 0 15px var(--neon-secondary); transition: width 0.05s linear;
+        }
+
+        #drama-result-text {
+            font-family: 'Orbitron'; font-size: 8rem; font-weight: 900; opacity: 0; transform: scale(0); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: absolute; z-index: 260; -webkit-text-stroke: 3px black; pointer-events: none; text-align: center;
+        }
+
+        /* CREDITS OVERLAY */
+        #credits-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 400; display: none;
+            flex-direction: column; align-items: center; overflow: hidden;
+        }
+        #credits-content {
+            text-align: center; position: absolute; width: 100%;
+            animation: scrollUp 15s linear forwards; top: 100%;
+        }
+        @keyframes scrollUp { to { top: -100%; } }
+        .credit-role { font-size: 1rem; color: #888; margin-top: 20px; font-family: 'Orbitron'; }
+        .credit-name { font-size: 2rem; color: #fff; margin-bottom: 10px; }
+        #winner-display {
+            display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; z-index: 410;
+            background: radial-gradient(circle, #222 0%, #000 80%); width: 100%;
+        }
+        .winner-title { font-size: 3rem; color: var(--neon-secondary); font-family: 'Orbitron'; margin-bottom: 20px; }
+        .winner-name { font-size: 6rem; color: #fff; font-family: 'Orbitron'; font-weight: bold; text-shadow: 0 0 50px var(--neon-primary); animation: pulse 1s infinite alternate; }
+
+    </style>
+</head>
+<body class="theme-0">
+
+    <header>
+        <div>
+            <h1>/// GRAPH SOCIAL</h1>
+            <div id="party-title" style="font-size:0.7rem; color:var(--neon-secondary)">SYSTEM INIT</div>
+        </div>
+        <div id="turn-indicator">SETUP</div>
+        <div style="text-align:right">
+            <div style="font-size:0.7rem; color:#888">CHAOS LEVEL</div>
+            <div style="width:100px; height:4px; background:#333"><div id="chaos-bar" style="height:100%; width:0%; background:var(--neon-secondary); transition:1s"></div></div>
+        </div>
+    </header>
+
+    <div id="left-panel" class="panel">
+        <div id="player-list"></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="graphCanvas"></canvas>
+        <div id="cam-controls">
+            <div class="cam-btn" onclick="game.camera.zoomIn()">+</div>
+            <div class="cam-btn" onclick="game.camera.reset()">R</div>
+            <div class="cam-btn" onclick="game.camera.zoomOut()">-</div>
+        </div>
+        <div id="notification" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Orbitron';font-size:3rem;color:#fff;opacity:0;pointer-events:none;transition:0.3s;text-shadow:0 0 20px white;z-index:50;text-align:center;width:80%"></div>
+    </div>
+
+    <div id="right-panel" class="panel">
+        <h3 style="color:var(--neon-secondary);margin-top:0">QUEUE</h3>
+        <div id="queue-list" style="font-size:0.8rem"></div>
+        <div id="log" style="margin-top:20px;font-size:0.7rem;color:#888;height:150px;overflow:hidden"></div>
+    </div>
+
+    <div id="control-deck">
+        <div id="msg-idle" style="color:#555">WAITING FOR INPUT...</div>
+        
+        <div id="action-panel" style="display:none; width:100%; align-items:center; justify-content:space-between;">
+            <div style="flex:1">
+                <div style="font-family:'Orbitron'; font-size:1.2rem; color:var(--neon-primary)">TARGET: <span id="target-name">NONE</span></div>
+                <div id="target-sub" style="font-size:0.8rem; color:#888">...</div>
+            </div>
+
+            <div id="calc-container">
+                <div class="calc-row"><span>BASE</span><span id="c-base" class="calc-val">--</span></div>
+                <div class="calc-row"><span>DIFF</span><span id="c-diff" class="calc-val neg">--</span></div>
+                <div class="calc-row"><span>CHAOS</span><span id="c-chaos" class="calc-val pos">--</span></div>
+                <div class="calc-row"><span>BOOST</span><span id="c-boost" class="calc-val pos">--</span></div>
+            </div>
+            
+            <div style="display:flex; gap:10px">
+                <button class="btn" id="btn-beer" onclick="game.buyBoost('beer')">BEER €2</button>
+                <button class="btn" id="btn-shot" onclick="game.buyBoost('shot')">SHOT €5</button>
+            </div>
+
+            <div id="prob-disp">0%</div>
+
+            <div style="display:flex; gap:10px">
+                <button class="btn" id="btn-pass" onclick="game.passTurn()">PASS</button>
+                <button class="btn btn-primary" id="btn-roll" onclick="game.startSequence()">MAKE THE MOVE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlays -->
+    <div id="transition-overlay"><h1 id="trans-text">PARTY</h1></div>
+    
+    <div id="drama-overlay">
+        <div id="drama-content">
+            <div id="drama-versus"></div>
+            <div id="drama-flavor">CALCULATING...</div>
+            <div id="drama-loader-container"><div id="drama-loader-bar"></div></div>
+        </div>
+        <div id="drama-result-text">SUCCESS</div>
+    </div>
+
+    <div id="credits-overlay">
+        <div id="credits-content"></div>
+        <div id="winner-display">
+            <div class="winner-title">FRESHMAN OF THE YEAR</div>
+            <div class="winner-name" id="winner-name">NAME</div>
+        </div>
+    </div>
+
+    <div id="setup-overlay">
+        <h1 style="color:var(--neon-primary); font-family:'Orbitron'">GRAPH PROTOCOL INIT</h1>
+        <p>Enter Agent Names:</p>
+        <input type="text" id="player-names" value="Gauss, Euler, Newton, Noether, Lovelace, Riemann, Fermat">
+        <button class="btn btn-primary" onclick="game.initGame()">LAUNCH SIMULATION</button>
+    </div>
+
+<script>
+const CONFIG = {
+    budgetStart: 40, maxTurnsPerParty: 3,
+    students: ["Cabanes", "Alexi", "Novak", "Nora", "Raül", "Albert", "Ferran", "Paco", "Ciscu", "Laure", "Alex", "Manyer", "Deivid", "Maçó", "Cospi", "Francesc", "Jordi", "Mireia", "Laia", "Pol", "Guim", "Aina", "Martí", "Quim", "Ona", "Biel", "Montserrat", "Sergi", "Núria", "Xavi"],
+    professors: ["Roura", "Miliki", "Casanellas", "Tyrion"],
+    parties: [ { name: "I. WELCOME PARTY" }, { name: "II. HALLOWEEN" }, { name: "III. CHRISTMAS" }, { name: "IV. CARNIVAL" }, { name: "V. THE PARTY" }, { name: "VI. HAWAIIAN" } ],
+    phrases: ["Breaking the ice...", "Requesting 'Despacito'...", "Doing the Robot...", "Making eye contact...", "Fixing hair...", "Buying a drink...", "Finger guns...", "Looking for a light...", "Cha Cha Real Smooth...", "Acting cool...", "Making a tiger look...", "Dancing to the floor..."]
+};
+
+class Player {
+    constructor(id, name, color) {
+        this.id=id; this.name=name; this.color=color; this.score=0; this.budget=CONFIG.budgetStart;
+        this.nodeId=null; this.turnsThisParty=0; this.hasGrant=false;
+    }
+}
+class Node {
+    constructor(id, name, type, x, y) {
+        this.id=id; this.name=name; this.type=type; this.x=x; this.y=y; this.vx=0; this.vy=0;
+        this.radius = type==='player' ? 15 : (type==='prof'?20:10);
+        this.coolness = type==='prof' ? 50 : Math.floor(Math.random()*10)+5;
+    }
+}
+class Edge { constructor(s, t, o=null) { this.source=s; this.target=t; this.owner=o; } }
+
+const game = {
+    canvas: document.getElementById('graphCanvas'), ctx: document.getElementById('graphCanvas').getContext('2d'),
+    nodes: [], edges: [], players: [], queue: [], partyIndex: 0, chaos: 0, currentPlayer: null, targetNode: null, currentBoost: 0,
+    width: 0, height: 0, cliques: [], camera: { x: 0, y: 0, zoom: 1, isDragging: false, lastX: 0, lastY: 0 },
+    processing: false,
+
+    initGame() {
+        const names = document.getElementById('player-names').value.split(',').map(s => s.trim()).filter(s => s);
+        const colors = ['#ff0055', '#00ccff', '#ccff00', '#aa00ff', '#ffaa00', '#00ffaa', '#ffffff'];
+        this.resize();
+        this.players = names.map((n, i) => new Player(i, n, colors[i % colors.length]));
+        this.initGraph();
+        document.getElementById('setup-overlay').style.display = 'none';
+        this.startParty(0);
+        this.loop();
+        this.camera.zoomIn = () => this.camera.zoom *= 1.1;
+        this.camera.zoomOut = () => this.camera.zoom /= 1.1;
+        this.camera.reset = () => { this.camera.x=0; this.camera.y=0; this.camera.zoom=1; };
+    },
+    initGraph() {
+        this.players.forEach((p, i) => {
+            const angle = (i/this.players.length)*Math.PI*2;
+            const n = new Node(this.nodes.length, p.name, 'player', Math.cos(angle)*350, Math.sin(angle)*350);
+            p.nodeId = n.id; this.nodes.push(n);
+        });
+        CONFIG.students.forEach(name => this.nodes.push(new Node(this.nodes.length, name, 'student', (Math.random()-0.5)*500, (Math.random()-0.5)*400)));
+        const students = this.nodes.filter(n => n.type === 'student');
+        for(let i=0; i<students.length/2; i++) { for(let j=i+1; j<students.length/2; j++) { if (Math.random() < 0.2) this.edges.push(new Edge(students[i].id, students[j].id)); } }
+        for(let i=Math.floor(students.length/2); i<students.length; i++) {
+            const target = students[Math.floor(Math.random() * (students.length/2))];
+            this.edges.push(new Edge(students[i].id, target.id));
+        }
+    },
+    startParty(index) {
+        this.partyIndex = index; this.chaos = 0;
+        document.body.className = `theme-${index}`;
+        document.getElementById('party-title').innerText = `PROTOCOL: ${CONFIG.parties[index].name}`;
+        const ov = document.getElementById('transition-overlay');
+        document.getElementById('trans-text').innerText = CONFIG.parties[index].name;
+        ov.style.opacity = 1; setTimeout(() => ov.style.opacity = 0, 2500);
+
+        if(index > 0) this.players.forEach(p => p.budget += 5);
+
+        if(index === 2) { 
+             CONFIG.professors.forEach(n => this.nodes.push(new Node(this.nodes.length, n, 'prof', 0, 0)));
+             this.notify("PROFESSORS ENTERED", "red");
+        }
+        this.players.forEach(p => p.turnsThisParty = 0);
+        let sorted = [...this.players];
+        if(index > 0) sorted.sort((a, b) => b.score - a.score);
+        else sorted.sort(() => Math.random() - 0.5);
+        this.queue = sorted.map(p => p.id);
+        this.detectCliques(); this.updateUI(); this.nextTurn();
+    },
+    nextTurn() {
+        this.processing = false;
+        this.queue = this.queue.filter(pid => this.players.find(pl => pl.id === pid).turnsThisParty < CONFIG.maxTurnsPerParty);
+        if (this.queue.length === 0) { this.endParty(); return; }
+        const pid = this.queue.shift();
+        this.currentPlayer = this.players.find(p => p.id === pid);
+        this.currentBoost = 0; this.targetNode = null;
+        this.chaos = Math.min(100, this.chaos + (this.partyIndex===5?10:5));
+        const banner = document.getElementById('turn-indicator');
+        banner.innerText = `${this.currentPlayer.name}`; banner.style.color = this.currentPlayer.color;
+        banner.style.textShadow = `0 0 25px ${this.currentPlayer.color}`;
+        document.getElementById('msg-idle').style.display = 'none';
+        document.getElementById('action-panel').style.display = 'flex';
+        document.getElementById('target-name').innerText = "SELECT NODE";
+        document.getElementById('target-sub').innerText = "Click a node to target";
+        document.getElementById('prob-disp').innerText = "--";
+        document.getElementById('btn-roll').disabled = true;
+        document.getElementById('btn-pass').disabled = false;
+        document.getElementById('btn-beer').disabled = false;
+        document.getElementById('btn-shot').disabled = false;
+        document.querySelectorAll('.calc-val').forEach(el => el.innerText = "--");
+        this.updateUI();
+    },
+    handleInput(x, y) {
+        if (!this.currentPlayer || this.processing) return;
+        const wx = (x - this.width/2) / this.camera.zoom + this.camera.x;
+        const wy = (y - this.height/2) / this.camera.zoom + this.camera.y;
+        const hitRadius = 20 / this.camera.zoom;
+        const clicked = this.nodes.find(n => (n.x-wx)**2 + (n.y-wy)**2 < (n.radius + hitRadius)**2);
+
+        if (clicked && clicked.type !== 'player') {
+            const reachable = this.getReachableNodes(this.currentPlayer.nodeId);
+            const myEdgeCount = this.edges.filter(e => e.owner === this.currentPlayer).length;
+            
+            if (clicked.type === 'prof') {
+                const sorted = [...this.players].sort((a,b) => b.score - a.score);
+                const rank = sorted.indexOf(this.currentPlayer);
+                if (rank < Math.floor(this.players.length / 2)) { this.notify("PROFESSORS ONLY TALK TO UNDERDOGS!", "red"); return; }
+            } else {
+                const isGlobal = (this.partyIndex === 0 && myEdgeCount === 0) || reachable.size === 0;
+                if (!isGlobal && !reachable.has(clicked.id)) { this.notify("TOO FAR (Dist > 3)"); return; }
+                if (this.partyIndex === 0 && myEdgeCount === 0) {
+                    const deg = this.getNodeDegree(clicked.id);
+                    if (deg > 1) { this.notify("ROUND 1: MUST START WITH A LONER (Deg=1)"); return; }
+                }
+            }
+            const ownerEdge = this.edges.find(e => e.target === clicked.id && e.owner && e.owner !== this.currentPlayer);
+            if (ownerEdge) {
+                 const victimEdges = this.edges.filter(e => e.owner === ownerEdge.owner).length;
+                 if (victimEdges <= 1) { this.notify("CANNOT ISOLATE PLAYER!", "red"); return; }
+            }
+            this.targetNode = clicked;
+            this.updateControlDeck();
+        }
+    },
+    updateControlDeck() {
+        if (!this.targetNode) return;
+        document.getElementById('target-name').innerText = this.targetNode.name.toUpperCase();
+        document.getElementById('btn-roll').disabled = false;
+        const probs = this.calcProb();
+        if(probs.isTutorial) {
+             document.getElementById('prob-disp').innerText = "100%";
+             document.getElementById('target-sub').innerText = "FIRST MOVE: Guaranteed";
+             document.querySelectorAll('.calc-val').forEach(el => el.innerText = "N/A");
+        } else {
+            document.getElementById('prob-disp').innerText = probs.total + "%";
+            document.getElementById('c-base').innerText = probs.base + "%";
+            document.getElementById('c-diff').innerText = probs.diff + "%";
+            document.getElementById('c-chaos').innerText = "+" + probs.chaos + "%";
+            document.getElementById('c-boost').innerText = "+" + probs.boost + "%";
+            let sub = `Cost: 1 Turn`;
+            const owner = this.edges.find(e => e.target === this.targetNode.id && e.owner && e.owner !== this.currentPlayer);
+            if(owner) sub = `STEAL from ${owner.owner.name.toUpperCase()}`;
+            document.getElementById('target-sub').innerText = sub;
+        }
+    },
+    buyBoost(type) {
+        if(this.processing) return;
+        const cost = this.currentPlayer.hasGrant ? (type==='beer'?1:3) : (type==='beer'?2:5);
+        if (this.currentPlayer.budget >= cost) {
+            this.currentPlayer.budget -= cost; this.currentBoost += (type==='beer'?10:25);
+            this.updateControlDeck(); this.updateUI();
+        }
+    },
+    calcProb() {
+        const myEdgeCount = this.edges.filter(e => e.owner === this.currentPlayer).length;
+        if (this.partyIndex === 0 && myEdgeCount === 0) return { total: 100, base: 100, diff: 0, chaos: 0, boost: 0, isTutorial: true };
+        let base = 40;
+        if (this.edges.find(e => e.target === this.targetNode.id && e.owner === this.currentPlayer)) base += 30;
+        let diff = this.getNodeDegree(this.targetNode.id) * 5;
+        if(this.targetNode.type === 'prof') diff = 30;
+        let chaosBonus = Math.floor(this.chaos * 0.5);
+        let total = base - diff + chaosBonus + this.currentBoost;
+        return { total: Math.max(5, Math.min(95, Math.floor(total))), base: base, diff: -diff, chaos: chaosBonus, boost: this.currentBoost, isTutorial: false };
+    },
+
+    // ANIMATION SEQUENCE (SIMPLE BAR)
+    startSequence() {
+        if (this.processing) return;
+        this.processing = true;
+        document.getElementById('btn-roll').disabled = true;
+        document.getElementById('btn-pass').disabled = true;
+        document.getElementById('btn-beer').disabled = true;
+        document.getElementById('btn-shot').disabled = true;
+
+        const probs = this.calcProb();
+        const isSuccess = probs.isTutorial || (Math.random() * 100 <= probs.total);
+        
+        const overlay = document.getElementById('drama-overlay');
+        const content = document.getElementById('drama-content');
+        const flavor = document.getElementById('drama-flavor');
+        const vs = document.getElementById('drama-versus');
+        const bar = document.getElementById('drama-loader-bar');
+        const resText = document.getElementById('drama-result-text');
+
+        overlay.style.display = 'flex';
+        content.style.opacity = 1;
+        resText.style.opacity = 0; resText.style.transform = 'scale(0)';
+        flavor.innerText = CONFIG.phrases[Math.floor(Math.random() * CONFIG.phrases.length)].toUpperCase();
+        bar.style.width = "0%";
+
+        const owner = this.edges.find(e => e.target === this.targetNode.id && e.owner && e.owner !== this.currentPlayer);
+        vs.innerText = owner ? `${this.currentPlayer.name} VS ${owner.owner.name}` : `${this.currentPlayer.name} >> ${this.targetNode.name}`;
+
+        // Simple Loading Animation
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 4; // Speed
+            bar.style.width = progress + "%";
+            
+            if (progress >= 100) {
+                clearInterval(interval);
+                
+                // Hide loading UI, Show Result
+                content.style.opacity = 0;
+                setTimeout(() => {
+                    resText.innerText = isSuccess ? "SUCCESS" : "REJECTED";
+                    resText.style.color = isSuccess ? "var(--neon-secondary)" : "#ff0055";
+                    resText.style.opacity = 1; 
+                    resText.style.transform = 'scale(1)';
+                    
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        this.finalizeMove(isSuccess);
+                    }, 1500);
+                }, 200);
+            }
+        }, 30);
+    },
+
+    finalizeMove(isSuccess) {
+        if(isSuccess) {
+            // No notify() here, just logs and logic
+            this.edges = this.edges.filter(e => !(e.target === this.targetNode.id && e.owner));
+            this.edges.push(new Edge(this.currentPlayer.nodeId, this.targetNode.id, this.currentPlayer));
+            if(this.targetNode.type === 'prof') this.currentPlayer.hasGrant = true;
+            this.log(`${this.currentPlayer.name} connected with ${this.targetNode.name}`);
+            this.currentPlayer.turnsThisParty++;
+            if(this.currentPlayer.turnsThisParty < CONFIG.maxTurnsPerParty) this.queue.push(this.currentPlayer.id);
+            this.detectCliques(); this.recalcScores();
+        } else {
+            this.log(`${this.currentPlayer.name} was rejected by ${this.targetNode.name}`);
+            this.currentPlayer.turnsThisParty = 999; 
+        }
+        this.nextTurn();
+    },
+
+    passTurn() { 
+        if(this.processing) return;
+        this.processing = true;
+        this.currentPlayer.turnsThisParty = 999; 
+        this.log(`${this.currentPlayer.name} passes.`); 
+        this.nextTurn(); 
+    },
+
+    recalcScores() {
+        this.players.forEach(p => p.score = 0);
+        this.edges.forEach(e => { if(e.owner) { let pts = this.nodes[e.target].coolness; if(this.partyIndex === 4) pts *= 2; e.owner.score += pts; } });
+        this.players.forEach(p => {
+            const pNode = this.nodes[p.nodeId];
+            const tris = this.cliques.filter(c => c.includes(pNode)).length;
+            p.score += (tris * 15);
+        });
+        this.players.forEach(p => { if(p.hasGrant) p.score = Math.floor(p.score * 1.5); });
+        this.updateUI();
+    },
+
+    endParty() {
+        this.processing = true;
+        const students = this.nodes.filter(n => n.type === 'student');
+        for(let i=0; i<5; i++) {
+            const a = students[Math.floor(Math.random()*students.length)];
+            const b = students[Math.floor(Math.random()*students.length)];
+            if(a!==b) this.edges.push(new Edge(a.id, b.id));
+        }
+        this.log("NPC RELATIONS SHIFTED.");
+        if(this.partyIndex < 5) setTimeout(() => this.startParty(this.partyIndex + 1), 2000);
+        else this.triggerCredits();
+    },
+
+    triggerCredits() {
+        const overlay = document.getElementById('credits-overlay');
+        const content = document.getElementById('credits-content');
+        const winnerDisplay = document.getElementById('winner-display');
+        const winnerName = document.getElementById('winner-name');
+        
+        overlay.style.display = 'flex';
+        
+        let html = "";
+        [...this.players].sort((a,b)=>b.score - a.score).forEach((p, i) => {
+            html += `<div class="credit-role">RANK ${i+1} - ${p.score} PTS</div><div class="credit-name" style="color:${p.color}">${p.name}</div>`;
+        });
+        content.innerHTML = html;
+
+        const winner = [...this.players].sort((a,b)=>b.score - a.score)[0];
+
+        setTimeout(() => {
+            content.style.display = 'none';
+            winnerDisplay.style.display = 'flex';
+            winnerName.innerText = winner.name;
+            winnerName.style.color = winner.color;
+        }, 15000); 
+    },
+
+    detectCliques() {
+        this.cliques = [];
+        for(let i=0; i<this.nodes.length; i++) { for(let j=i+1; j<this.nodes.length; j++) { for(let k=j+1; k<this.nodes.length; k++) {
+            const a = this.nodes[i].id, b = this.nodes[j].id, c = this.nodes[k].id;
+            const ab = this.edges.some(e => (e.source===a && e.target===b) || (e.source===b && e.target===a));
+            const bc = this.edges.some(e => (e.source===b && e.target===c) || (e.source===c && e.target===b));
+            const ca = this.edges.some(e => (e.source===c && e.target===a) || (e.source===a && e.target===c));
+            if(ab && bc && ca) this.cliques.push([this.nodes[i], this.nodes[j], this.nodes[k]]);
+        }}}
+    },
+
+    getNodeDegree(id) { return this.edges.filter(e => e.source === id || e.target === id).length; },
+    getReachableNodes(start) {
+        let q = [[start, 0]], visited = new Set(), res = new Set();
+        while(q.length) {
+            let [c, d] = q.shift(); visited.add(c);
+            if(d>0 && d<=3) res.add(c); if(d>=3) continue;
+            this.edges.forEach(e => { let n = (e.source===c?e.target:(e.target===c?e.source:null)); if(n!==null && !visited.has(n)) q.push([n, d+1]); });
+        }
+        return res;
+    },
+    notify(m, c="#fff") { const el=document.getElementById('notification'); el.innerText=m; el.style.color=c; el.style.opacity=1; setTimeout(()=>el.style.opacity=0, 2000); },
+    log(m) { document.getElementById('log').insertAdjacentHTML('afterbegin', `<div>> ${m}</div>`); },
+
+    updateUI() {
+        const pl = document.getElementById('player-list'); pl.innerHTML='';
+        [...this.players].sort((a,b)=>b.score-a.score).forEach(p => {
+            pl.innerHTML += `<div class="card ${this.currentPlayer===p?'active':''}">
+                <div style="color:${p.color};font-weight:bold">${p.name} ${p.hasGrant?'🎓':''}</div>
+                <div style="display:flex;justify-content:space-between"><span>${p.score}</span><span style="color:var(--neon-secondary)">€${p.budget}</span></div>
+            </div>`;
+        });
+        const ql = document.getElementById('queue-list'); ql.innerHTML='';
+        this.queue.forEach((pid, i) => {
+            const p = this.players.find(x=>x.id===pid);
+            ql.innerHTML += `<div style="border-bottom:1px solid #333;padding:4px;display:flex;justify-content:space-between">
+                <span style="${i===0?'color:var(--neon-secondary)':''}">${i+1}. ${p.name}</span><span>${p.turnsThisParty+1}/3</span></div>`;
+        });
+        document.getElementById('chaos-bar').style.width = this.chaos+"%";
+    },
+
+    resize() { this.width = this.canvas.clientWidth; this.height = this.canvas.clientHeight; this.canvas.width = this.width; this.canvas.height = this.height; },
+    physics() {
+        this.nodes.forEach(a => {
+            let fx=0, fy=0;
+            this.nodes.forEach(b => { if(a===b)return; let dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy; let f=1500/(d2+10); fx+=dx*f; fy+=dy*f; });
+            this.edges.forEach(e => { if(e.source===a.id||e.target===a.id) { let b = this.nodes[e.source===a.id?e.target:e.source]; let dx=b.x-a.x, dy=b.y-a.y; fx+=dx*0.003; fy+=dy*0.003; } });
+            fx -= a.x*0.008; fy -= a.y*0.008; a.vx=(a.vx+fx)*0.9; a.vy=(a.vy+fy)*0.9; a.x+=a.vx; a.y+=a.vy;
+        });
+    },
+    draw() {
+        const ctx = this.ctx; ctx.clearRect(0,0,this.width,this.height); ctx.save();
+        ctx.translate(this.width/2, this.height/2); ctx.scale(this.camera.zoom, this.camera.zoom); ctx.translate(-this.camera.x, -this.camera.y);
+        this.cliques.forEach(tri => {
+            ctx.beginPath(); ctx.moveTo(tri[0].x, tri[0].y); ctx.lineTo(tri[1].x, tri[1].y); ctx.lineTo(tri[2].x, tri[2].y);
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.15)'; ctx.fill();
+        });
+        this.edges.forEach(e => {
+            const s = this.nodes[e.source], t = this.nodes[e.target];
+            ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y);
+            if(e.owner) { ctx.strokeStyle = e.owner.color; ctx.lineWidth = 2/this.camera.zoom; } else { ctx.strokeStyle = '#333'; ctx.lineWidth = 1/this.camera.zoom; }
+            ctx.stroke();
+        });
+        if(this.currentPlayer && this.targetNode) {
+            const s = this.nodes[this.currentPlayer.nodeId];
+            ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(this.targetNode.x, this.targetNode.y);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2/this.camera.zoom; ctx.setLineDash([10/this.camera.zoom, 10/this.camera.zoom]);
+            ctx.stroke(); ctx.setLineDash([]);
+        }
+        this.nodes.forEach(n => {
+            const drawRadius = n.radius / this.camera.zoom; ctx.beginPath(); ctx.arc(n.x, n.y, drawRadius, 0, Math.PI*2);
+            if(n.type==='player') { const p = this.players.find(x=>x.nodeId===n.id); ctx.fillStyle=p.color; ctx.shadowBlur=15; ctx.shadowColor=p.color; }
+            else if(n.type==='prof') { ctx.fillStyle='#f00'; ctx.shadowBlur=10; ctx.shadowColor='#f00'; }
+            else { 
+                ctx.fillStyle='#444'; ctx.shadowBlur=0; 
+                if(this.currentPlayer) {
+                    const reach = this.getReachableNodes(this.currentPlayer.nodeId);
+                    const myEdgeCount = this.edges.filter(e => e.owner === this.currentPlayer).length;
+                    const isGlobal = (this.partyIndex === 0 && myEdgeCount === 0) || reach.size === 0;
+                    if(isGlobal || reach.has(n.id)) ctx.fillStyle='#bbb';
+                }
+            }
+            if(this.targetNode===n) { ctx.strokeStyle='#fff'; ctx.lineWidth=3/this.camera.zoom; ctx.stroke(); }
+            ctx.fill(); ctx.shadowBlur=0;
+            if (n.type === 'player') { const p = this.players.find(x=>x.nodeId===n.id); ctx.font = `bold ${16/this.camera.zoom}px 'Roboto Mono'`; ctx.fillStyle = p.color; }
+            else { ctx.font = `${10/this.camera.zoom}px 'Roboto Mono'`; ctx.fillStyle = '#fff'; }
+            ctx.textAlign='center'; ctx.fillText(n.name, n.x, n.y - drawRadius - (5/this.camera.zoom));
+        });
+        ctx.restore();
+    },
+    loop() { this.physics(); this.draw(); requestAnimationFrame(()=>this.loop()); }
+};
+
+window.addEventListener('resize', () => game.resize());
+window.addEventListener('wheel', e => { e.preventDefault(); game.camera.zoom *= e.deltaY > 0 ? 0.9 : 1.1; });
+const c = document.getElementById('game-container');
+c.addEventListener('mousedown', e => { game.camera.isDragging=true; game.camera.lastX=e.clientX; game.camera.lastY=e.clientY; });
+window.addEventListener('mouseup', e => {
+    if(game.camera.isDragging && Math.abs(e.clientX-game.camera.lastX)<5 && Math.abs(e.clientY-game.camera.lastY)<5) {
+        const r = game.canvas.getBoundingClientRect(); game.handleInput(e.clientX-r.left, e.clientY-r.top);
+    }
+    game.camera.isDragging=false;
+});
+window.addEventListener('mousemove', e => {
+    if(game.camera.isDragging) {
+        game.camera.x -= (e.clientX-game.camera.lastX)/game.camera.zoom;
+        game.camera.y -= (e.clientY-game.camera.lastY)/game.camera.zoom;
+        game.camera.lastX=e.clientX; game.camera.lastY=e.clientY;
+    }
+});
+</script>
+</body>
+</html>
